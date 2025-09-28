@@ -4,21 +4,18 @@
 class String {
 protected:
 	char* data;
-	size_t length;
+	int length;
 
-	void allocateMemory(size_t size) {
-		data = new char[size + 1];
-		data[size] = '\0';
-		length = size;
+	void allocateMemory(int len) {
+		data = new char[len + 1];
+		data[len] = '\0';
+		length = len;
 	}
 
-	void copyFrom(const char* str, size_t len) {
-		allocateMemory(len);
-		for (size_t i = 0; i < len; i++) {
-			data[i] = str[i];
-		}
+	void copyFrom(const String& other, int len) {
+		allocateMemory(other.length);
+		strcpy_s(data, len, other.data + 1);
 	}
-
 public:
 	String() : data(nullptr), length(0) {
 		allocateMemory(0);
@@ -29,9 +26,9 @@ public:
 			allocateMemory(0);
 		}
 		else {
-			size_t len = 0;
-			while (str[len] != '\0') len++;
-			copyFrom(str, len);
+			int len = strlen(str);
+			allocateMemory(len);
+			strcpy_s(data, len, str + 1);
 		}
 	}
 
@@ -47,7 +44,7 @@ public:
 		return *this;
 	}
 
-	size_t getLength() const {
+	int getLength() const {
 		return length;
 	}
 
@@ -56,64 +53,42 @@ public:
 		allocateMemory(0);
 	}
 
-	virtual ~String() {
+	~String() {
 		delete[] data;
 	}
 
 	String operator+(const String& other) const {
 		String result;
 		result.allocateMemory(length + other.length);
-
-		for (size_t i = 0; i < length; i++) {
-			result.data[i] = data[i];
-		}
-
-		for (size_t i = 0; i < other.length; i++) {
-			result.data[length + i] = other.data[i];
-		}
-
+		strcpy_s(result.data, length, data);
+		strcpy_s(result.data + length, other.length, other.data);
 		return result;
 	}
 
-	String& operator+=(const String& other) {
-		char* temp = new char[length + other.length + 1];
-
-		for (size_t i = 0; i < length; i++) {
-			temp[i] = data[i];
-		}
-
-		for (size_t i = 0; i < other.length; i++) {
-			temp[length + i] = other.data[i];
-		}
-
-		temp[length + other.length] = '\0';
+	String operator+=(const String& other) {
+		char* newData = new char[length + other.length + 1];
+		strcpy_s(newData, length, data + 1);
+		strcpy_s(newData + length, other.length, other.data + 1);
+		newData[length + other.length] = '\0';
 
 		delete[] data;
-		data = temp;
+		data = newData;
 		length += other.length;
-
 		return *this;
 	}
 
 	bool operator==(const String& other) const {
-		if (length != other.length) return false;
-
-		for (size_t i = 0; i < length; i++) {
-			if (data[i] != other.data[i]) {
-				return false;
-			}
+		if (length != other.length) {
+			return false;
 		}
-		return true;
+		return strcmp(data, other.data) == 0;
 	}
-
 	bool operator!=(const String& other) const {
 		return !(*this == other);
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const String& str) {
-		for (size_t i = 0; i < str.length; i++) {
-			os << str.data[i];
-		}
+		os << str.data;
 		return os;
 	}
 };
@@ -171,63 +146,51 @@ public:
 	}
 
 	BitString operator+(const BitString& other) const {
-		if (!isValidBitString(data) || !isValidBitString(other.data)) {
+		if (length != other.length) {
 			return BitString();
 		}
-		int maxLen = (length > other.length) ? length : other.length;
 
-		BitString left = *this;
-		BitString right = other;
+		int maxLen = length;
+		/*BitString temp1 = *this;
+		BitString temp2 = other;
 
-		char leftPad = (left.length > 0) ? left.data[0] : '0';
-		char rightPad = (right.length > 0) ? right.data[0] : '0';
-		if (left.length < maxLen) {
-			char* temp = new char[maxLen + 1];
-			int padCount = maxLen - left.length;
-			for (int i = 0; i < padCount; i++) {
-				temp[i] = leftPad;
-			}
-			std::memcpy(temp + padCount, left.data, left.length);
-			temp[maxLen] = '\0';
-			delete[] left.data;
-			left.data = temp;
-			left.length = maxLen;
-		}
+		temp1.complement();
+		temp2.complement();
 
-		if (right.length < maxLen) {
-			char* temp = new char[maxLen + 1];
-			int padCount = maxLen - right.length;
-			for (int i = 0; i < padCount; i++) {
-				temp[i] = rightPad;
-			}
-			std::memcpy(temp + padCount, right.data, right.length);
-			temp[maxLen] = '\0';
-			delete[] right.data;
-			right.data = temp;
-			right.length = maxLen;
-		}
+		BitString result = temp1 + temp2;*/
 		BitString result;
-		result.allocateMemory(maxLen);
+		result.allocateMemory(maxLen + 1);
 
-		int carry = 0;
-		for (int i = maxLen - 1; i >= 0; i--) {
-			int bit1 = left.data[i] - '0';
-			int bit2 = right.data[i] - '0';
-			int sum = bit1 + bit2 + carry;
-
-			result.data[i] = (sum % 2) + '0';
-			carry = sum / 2;
+		char carry = '0';
+		for (int i = maxLen - 1; i >= 0; --i) {
+			int sum = (data[i] - '0') + (other.data[i] - '0') + (carry - '0');
+			if (sum == 0) {
+				result.data[i + 1] = '0';
+				carry = '0';
+			}
+			else if (sum == 1) {
+				result.data[i + 1] = '1';
+				carry = '0';
+			}
+			else if (sum == 2) {
+				result.data[i + 1] = '0';
+				carry = '1';
+			}
+			else {
+				result.data[i + 1] = '1';
+				carry = '1';
+			}
 		}
-		if (carry > 0) {
-			char* newData = new char[maxLen + 2];
-			newData[0] = carry + '0';
-			std::memcpy(newData + 1, result.data, maxLen);
-			newData[maxLen + 1] = '\0';
+		result.data[0] = carry;
+		result.length = maxLen + 1;
+
+		if (result.data[0] == '0') {
+			char* newData = new char[maxLen + 1];
+			strcpy_s(newData, maxLen + 1, result.data + 1);
 			delete[] result.data;
 			result.data = newData;
-			result.length = maxLen + 1;
+			result.length = maxLen;
 		}
-
 		return result;
 	}
 
@@ -245,7 +208,7 @@ public:
 	}
 };
 
-int main() 
+int main()
 {
 	String str1("Hello");
 	String str2(" World");
