@@ -14,7 +14,7 @@ protected:
 
 	void copyFrom(const String& other, int len) {
 		allocateMemory(other.length);
-		strcpy_s(data, len, other.data + 1);
+		strcpy_s(data, len + 1, other.data);
 	}
 public:
 	String() : data(nullptr), length(0) {
@@ -28,7 +28,7 @@ public:
 		else {
 			int len = strlen(str);
 			allocateMemory(len);
-			strcpy_s(data, len, str + 1);
+			strcpy_s(data, len + 1, str);
 		}
 	}
 
@@ -60,15 +60,15 @@ public:
 	String operator+(const String& other) const {
 		String result;
 		result.allocateMemory(length + other.length);
-		strcpy_s(result.data, length, data);
-		strcpy_s(result.data + length, other.length, other.data);
+		strcpy_s(result.data, length + 1, data);
+		strcpy_s(result.data + length, other.length + 1, other.data);
 		return result;
 	}
 
 	String operator+=(const String& other) {
 		char* newData = new char[length + other.length + 1];
-		strcpy_s(newData, length, data + 1);
-		strcpy_s(newData + length, other.length, other.data + 1);
+		strcpy_s(newData, length + 1, data);
+		strcpy_s(newData + length, other.length + 1, other.data );
 		newData[length + other.length] = '\0';
 
 		delete[] data;
@@ -186,7 +186,7 @@ public:
 
 		if (result.data[0] == '0') {
 			char* newData = new char[maxLen + 1];
-			strcpy_s(newData, maxLen + 1, result.data + 1);
+			strcpy_s(newData, maxLen + 1, result.data);
 			delete[] result.data;
 			result.data = newData;
 			result.length = maxLen;
